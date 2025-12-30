@@ -1,5 +1,4 @@
 const dynamic = 'force-dynamic';
-
 const execute = async (
   _req: Request,
   {
