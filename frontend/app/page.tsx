@@ -27,7 +27,7 @@ export default function Chat() {
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(['text']);
   const [showFeatures, setShowFeatures] = useState(false);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input = '', handleInputChange, handleSubmit, isLoading } = useChat({
     api: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001') + '/api/chat',
     body: {
       notion_token: notionToken,
