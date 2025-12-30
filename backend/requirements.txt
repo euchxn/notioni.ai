@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+google-generativeai
+notion-client
+python-dotenv
+pydantic
