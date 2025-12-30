@@ -1,6 +1,6 @@
 'use client';
 
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { useState, useEffect } from 'react';
 
 // 사용 가능한 기능 정의
