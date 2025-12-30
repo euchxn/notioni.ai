@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 const dynamic = 'force-dynamic';
 
 const execute = async (
