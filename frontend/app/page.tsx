@@ -1,7 +1,6 @@
 'use client';
 
-import { useChat } from '@ai-sdk/react';
-import { useState, useEffect } from 'react';
+import { useState, FormEvent } from 'react';
 
 // 사용 가능한 기능 정의
 const AVAILABLE_FEATURES = {
@@ -21,20 +20,104 @@ const AVAILABLE_FEATURES = {
 
 type FeatureKey = keyof typeof AVAILABLE_FEATURES;
 
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function Chat() {
   const [notionToken, setNotionToken] = useState('');
   const [pageId, setPageId] = useState('');
   const [enabledFeatures, setEnabledFeatures] = useState<FeatureKey[]>(['text']);
   const [showFeatures, setShowFeatures] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { messages, input = '', handleInputChange, handleSubmit, isLoading } = useChat({
-    api: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001') + '/api/chat',
-    body: {
-      notion_token: notionToken,
-      page_id: pageId,
-      enabled_features: enabledFeatures,
-    },
-  });
+  // 환경변수에서 API URL 가져오기 (배포 시 설정 필요)
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          notion_token: notionToken,
+          page_id: pageId,
+          enabled_features: enabledFeatures,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // 스트리밍 응답 처리
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '',
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          assistantMessage.content += chunk;
+          
+          setMessages(prev => 
+            prev.map(m => 
+              m.id === assistantMessage.id 
+                ? { ...m, content: assistantMessage.content }
+                : m
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error('채팅 오류:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '❌ 오류가 발생했습니다. 다시 시도해주세요.',
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const toggleFeature = (feature: FeatureKey) => {
     // 텍스트는 항상 활성화
