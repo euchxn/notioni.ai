@@ -262,17 +262,17 @@ export default function Chat() {
             value={input}
             placeholder="예: 신년 계획표 만들어줘"
             onChange={handleInputChange}
-            disabled={!notionToken || !pageId || isLoading}
+            disabled={isLoading}
           />
           <button
             type="submit"
-            disabled={!notionToken || !pageId || isLoading || !input.trim()}
+            disabled={isLoading || !input.trim()}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
             ➤
           </button>
         </div>
-        {!notionToken && <p className="text-center text-xs text-red-500 mt-2">👆 먼저 위에서 Notion 정보를 입력해주세요.</p>}
+        {(!notionToken || !pageId) && <p className="text-center text-xs text-orange-500 mt-2">⚠️ Notion 정보가 비어있으면 오류가 발생할 수 있어요.</p>}
       </form>
     </div>
   );
