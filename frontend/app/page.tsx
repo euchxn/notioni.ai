@@ -108,10 +108,21 @@ export default function Chat() {
       }
     } catch (error) {
       console.error('채팅 오류:', error);
+      
+      let errorContent = '❌ 오류가 발생했습니다.\n\n';
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorContent += `📡 **네트워크 오류**\nAPI 서버에 연결할 수 없습니다.\n\n현재 API URL: ${API_URL}\n\n해결 방법:\n1. FastAPI 서버가 실행 중인지 확인하세요\n2. NEXT_PUBLIC_API_URL 환경변수가 올바른지 확인하세요\n3. CORS 설정이 되어있는지 확인하세요`;
+      } else if (error instanceof Error) {
+        errorContent += `**오류 메시지**: ${error.message}`;
+      } else {
+        errorContent += `**알 수 없는 오류**: ${String(error)}`;
+      }
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '❌ 오류가 발생했습니다. 다시 시도해주세요.',
+        content: errorContent,
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
