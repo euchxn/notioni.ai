@@ -12,16 +12,13 @@ from fastapi.responses import StreamingResponse
 import google.generativeai as genai
 from notion_client import Client
 
-# 1. 환경변수 로드
+# 1. 환경변수 로드 (GEMINI_API_KEY만 사용)
 load_dotenv("api.env")
 
-NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-PAGE_ID = os.getenv("PAGE_ID")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-flash-latest')
-notion = Client(auth=NOTION_TOKEN)
 
 app = FastAPI()
 
@@ -35,6 +32,8 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     messages: list
+    notion_token: str  # 프론트엔드에서 받은 Notion 토큰
+    page_id: str  # 프론트엔드에서 받은 Page ID
     enabled_features: Optional[List[str]] = None  # 사용자가 선택한 기능들
 
 # =========================================================
@@ -93,9 +92,9 @@ ALL_FEATURES = {
 }
 
 # =========================================================
-# 1. [핵심] 기존 블록 조회 함수
+# 1. [핵심] 기존 블록 조회 함수 (notion 클라이언트를 인자로 받음)
 # =========================================================
-def get_existing_blocks(page_id: str):
+def get_existing_blocks(notion: Client, page_id: str):
     """
     페이지의 기존 블록들을 조회합니다.
     """
@@ -117,11 +116,11 @@ def get_block_content(block):
             return "".join([t.get("plain_text", "") for t in rich_text])
     return ""
 
-def get_all_blocks_recursive(page_id: str, depth=0):
+def get_all_blocks_recursive(notion: Client, page_id: str, depth=0):
     """
     페이지의 모든 블록을 재귀적으로 조회합니다 (하위 블록 포함).
     """
-    blocks = get_existing_blocks(page_id)
+    blocks = get_existing_blocks(notion, page_id)
     result = []
     
     for block in blocks:
@@ -136,7 +135,7 @@ def get_all_blocks_recursive(page_id: str, depth=0):
         
         # 하위 블록이 있으면 재귀 조회
         if block.get("has_children"):
-            children = get_all_blocks_recursive(block.get("id"), depth + 1)
+            children = get_all_blocks_recursive(notion, block.get("id"), depth + 1)
             block_info["children"] = children
             result.extend(children)
     
@@ -145,7 +144,7 @@ def get_all_blocks_recursive(page_id: str, depth=0):
 # =========================================================
 # 2. [핵심] 블록 수정 함수
 # =========================================================
-def update_block(block_id: str, new_content: str, block_type: str = None):
+def update_block(notion: Client, block_id: str, new_content: str, block_type: str = None):
     """
     기존 블록의 내용을 수정합니다.
     """
@@ -179,7 +178,7 @@ def update_block(block_id: str, new_content: str, block_type: str = None):
 # =========================================================
 # 3. [핵심] 블록 삭제 함수
 # =========================================================
-def delete_block(block_id: str):
+def delete_block(notion: Client, block_id: str):
     """
     블록을 삭제합니다.
     """
@@ -191,13 +190,13 @@ def delete_block(block_id: str):
         print(f"블록 삭제 실패: {e}")
         return False
 
-def delete_all_blocks(page_id: str):
+def delete_all_blocks(notion: Client, page_id: str):
     """
     페이지의 모든 블록을 삭제합니다.
     """
-    blocks = get_existing_blocks(page_id)
+    blocks = get_existing_blocks(notion, page_id)
     for block in blocks:
-        delete_block(block.get("id"))
+        delete_block(notion, block.get("id"))
 
 # =========================================================
 # 4. [핵심] 재귀 함수: 블록 안에 블록을 넣는 로직
@@ -292,7 +291,7 @@ def build_notion_structure(items):
 # =========================================================
 # 5. 실행기: 페이지 생성과 블록 추가/수정을 조율
 # =========================================================
-def execute_notion_plan(design_data, mode="add"):
+def execute_notion_plan(notion: Client, page_id: str, design_data, mode="add"):
     """
     mode: "add" (추가), "replace" (전체 교체), "update" (부분 수정)
     """
@@ -303,7 +302,7 @@ def execute_notion_plan(design_data, mode="add"):
         # 전체 교체 모드: 기존 내용 삭제 후 새로 추가
         if mode == "replace":
             print("🔄 기존 내용 삭제 중...")
-            delete_all_blocks(PAGE_ID)
+            delete_all_blocks(notion, page_id)
         
         current_batch = []
         
@@ -315,13 +314,13 @@ def execute_notion_plan(design_data, mode="add"):
 
             # 수정 모드: block_id가 있으면 해당 블록 수정
             if block_id and mode == "update":
-                update_block(block_id, content, b_type)
+                update_block(notion, block_id, content, b_type)
                 continue
 
             # 하위 페이지(child_page)를 만드는 경우
             if b_type == "child_page":
                 if current_batch:
-                    notion.blocks.children.append(block_id=PAGE_ID, children=current_batch)
+                    notion.blocks.children.append(block_id=page_id, children=current_batch)
                     current_batch = [] 
 
                 page_content_blocks = []
@@ -330,7 +329,7 @@ def execute_notion_plan(design_data, mode="add"):
 
                 print(f"📄 페이지 생성 중(내용 포함): {content}")
                 notion.pages.create(
-                    parent={"page_id": PAGE_ID},
+                    parent={"page_id": page_id},
                     properties={
                         "title": {"title": [{"text": {"content": content}}]}
                     },
@@ -345,7 +344,7 @@ def execute_notion_plan(design_data, mode="add"):
 
         # 남은 블록 처리
         if current_batch:
-            notion.blocks.children.append(block_id=PAGE_ID, children=current_batch)
+            notion.blocks.children.append(block_id=page_id, children=current_batch)
 
         mode_text = {
             "add": "추가",
@@ -492,9 +491,28 @@ async def get_available_features():
 @app.post("/api/chat")
 async def handle_chat(request: ChatRequest):
     user_message = request.messages[-1]['content']
+    notion_token = request.notion_token  # 프론트엔드에서 받은 토큰
+    page_id = request.page_id  # 프론트엔드에서 받은 페이지 ID
     enabled_features = request.enabled_features
+    
     print(f"📩 메시지: {user_message}")
+    print(f"🔑 Notion Token: {notion_token[:20]}..." if notion_token else "🔑 Notion Token: (없음)")
+    print(f"📄 Page ID: {page_id}")
     print(f"🔧 활성화된 기능: {enabled_features}")
+    
+    # 토큰 유효성 검사
+    if not notion_token or not page_id:
+        async def error_generator():
+            yield "❌ Notion Token 또는 Page ID가 비어있습니다. 입력창에 올바른 값을 입력해주세요."
+        return StreamingResponse(error_generator(), media_type="text/plain")
+    
+    # 요청마다 새로운 Notion 클라이언트 생성
+    try:
+        notion = Client(auth=notion_token)
+    except Exception as e:
+        async def error_generator():
+            yield f"❌ Notion 클라이언트 초기화 실패: {e}"
+        return StreamingResponse(error_generator(), media_type="text/plain")
 
     async def event_generator():
         yield f"'{user_message}' 요청을 처리하는 중입니다... ✍️\n"
@@ -508,7 +526,7 @@ async def handle_chat(request: ChatRequest):
         
         # 기존 블록 조회 (수정 모드 지원)
         yield "📖 현재 페이지 내용을 확인하는 중...\n"
-        existing_blocks = get_all_blocks_recursive(PAGE_ID)
+        existing_blocks = get_all_blocks_recursive(notion, page_id)
         
         # 간소화된 블록 정보 (AI에게 전달용)
         simplified_blocks = [
@@ -533,29 +551,45 @@ async def handle_chat(request: ChatRequest):
         yield f"🔧 모드: {mode_text.get(mode, mode)}\n"
         yield f"구조화된 블록을 Notion에 배치하고 있습니다... 🧱\n"
         
-        result = execute_notion_plan(blocks, mode)
+        result = execute_notion_plan(notion, page_id, blocks, mode)
         yield f"\n{result}"
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
 # 블록 조회 API (프론트엔드에서 사용 가능)
-@app.get("/api/blocks")
-async def get_blocks():
-    blocks = get_all_blocks_recursive(PAGE_ID)
+@app.post("/api/blocks")
+async def get_blocks(request: ChatRequest):
+    notion_token = request.notion_token
+    page_id = request.page_id
+    
+    if not notion_token or not page_id:
+        return {"error": "Notion Token 또는 Page ID가 비어있습니다."}
+    
+    notion = Client(auth=notion_token)
+    blocks = get_all_blocks_recursive(notion, page_id)
     return {"blocks": blocks}
 
 # 특정 블록 수정 API
 @app.put("/api/blocks/{block_id}")
 async def update_single_block(block_id: str, request: dict):
+    notion_token = request.get("notion_token")
+    if not notion_token:
+        return {"success": False, "error": "Notion Token이 필요합니다."}
+    
+    notion = Client(auth=notion_token)
     new_content = request.get("content", "")
     block_type = request.get("type")
-    success = update_block(block_id, new_content, block_type)
+    success = update_block(notion, block_id, new_content, block_type)
     return {"success": success}
 
 # 특정 블록 삭제 API
 @app.delete("/api/blocks/{block_id}")
-async def delete_single_block(block_id: str):
-    success = delete_block(block_id)
+async def delete_single_block(block_id: str, notion_token: str = None):
+    if not notion_token:
+        return {"success": False, "error": "Notion Token이 필요합니다."}
+    
+    notion = Client(auth=notion_token)
+    success = delete_block(notion, block_id)
     return {"success": success}
 
 if __name__ == "__main__":
