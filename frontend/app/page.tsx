@@ -152,32 +152,32 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col w-full max-w-md py-10 mx-auto stretch px-4">
-      <h1 className="text-2xl font-bold text-center mb-6">✨ 나만의 Notion 생성기</h1>
+    <div className="flex flex-col w-full max-w-md py-10 mx-auto stretch px-4 bg-white min-h-screen">
+      <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">✨ 나만의 Notion 생성기</h1>
 
       {/* 1. 설정 입력칸 (토큰 & ID) */}
       <div className="bg-gray-100 p-4 rounded-lg mb-4 space-y-3 shadow-inner">
         <div>
-          <label className="block text-xs font-bold text-gray-500 mb-1">Notion Token (Integration Key)</label>
+          <label className="block text-xs font-bold text-gray-600 mb-1">Notion Token (Integration Key)</label>
           <input
             type="password"
-            className="w-full p-2 border border-gray-300 rounded text-sm"
+            className="w-full p-2 border border-gray-300 rounded text-sm bg-white text-gray-900"
             placeholder="secret_..."
             value={notionToken}
             onChange={(e) => setNotionToken(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 mb-1">Page ID</label>
+          <label className="block text-xs font-bold text-gray-600 mb-1">Page ID</label>
           <input
             type="text"
-            className="w-full p-2 border border-gray-300 rounded text-sm"
+            className="w-full p-2 border border-gray-300 rounded text-sm bg-white text-gray-900"
             placeholder="32자리 ID (URL에서 복사)"
             value={pageId}
             onChange={(e) => setPageId(e.target.value)}
           />
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-500">
           * 다른 사람의 Notion에 템플릿을 생성하려면 해당 사용자의 키가 필요합니다.
         </p>
       </div>
@@ -228,14 +228,14 @@ export default function Chat() {
                     className="mr-2"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{feature.name}</div>
+                    <div className="text-sm font-medium truncate text-gray-900">{feature.name}</div>
                     <div className="text-xs text-gray-500 truncate">{feature.description}</div>
                   </div>
                 </label>
               ))}
             </div>
 
-            <p className="mt-3 text-xs text-gray-400">
+            <p className="mt-3 text-xs text-gray-500">
               💡 선택한 기능만 AI가 템플릿 생성에 사용합니다. 텍스트는 기본으로 항상 활성화됩니다.
             </p>
           </div>
@@ -245,20 +245,20 @@ export default function Chat() {
       {/* 3. 채팅 기록 */}
       <div className="space-y-4 mb-24">
         {messages.length === 0 && (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center text-gray-500 py-8">
             <p>💬 노션에 만들고 싶은 템플릿을 설명해보세요!</p>
             <p className="text-xs mt-2">예: "신년 계획표 만들어줘", "독서 기록 템플릿 만들어줘"</p>
           </div>
         )}
         {messages.map(m => (
           <div key={m.id} className={`p-4 rounded-lg ${m.role === 'user' ? 'bg-blue-100' : 'bg-gray-100 border border-gray-200'}`}>
-            <strong className="block font-bold mb-1 text-sm">{m.role === 'user' ? '나' : 'AI'}</strong>
-            <div className="whitespace-pre-wrap text-sm">{m.content}</div>
+            <strong className="block font-bold mb-1 text-sm text-gray-900">{m.role === 'user' ? '나' : 'AI'}</strong>
+            <div className="whitespace-pre-wrap text-sm text-gray-800">{m.content}</div>
           </div>
         ))}
         {isLoading && (
           <div className="p-4 rounded-lg bg-gray-100 border border-gray-200 animate-pulse">
-            <strong className="block font-bold mb-1 text-sm">AI</strong>
+            <strong className="block font-bold mb-1 text-sm text-gray-900">AI</strong>
             <div className="text-sm text-gray-500">생성 중...</div>
           </div>
         )}
@@ -268,7 +268,7 @@ export default function Chat() {
       <form onSubmit={handleSubmit} className="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto mb-6 px-4">
         <div className="relative">
           <input
-            className="w-full p-4 pr-12 border border-gray-300 rounded-full shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-4 pr-12 border border-gray-300 rounded-full shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
             value={input}
             placeholder="예: 신년 계획표 만들어줘"
             onChange={handleInputChange}
