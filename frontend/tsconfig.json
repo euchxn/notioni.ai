@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "module": "esnext",
+    "baseUrl": ".",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -19,15 +24,28 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@component/*": ["./component/*"],
-      "@util/*": ["./util/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@component/*": [
+        "./component/*"
+      ],
+      "@util/*": [
+        "./util/*"
+      ]
     },
     "composite": true,
     "noEmit": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
   "references": [
     {
       "path": "../../packages/ai"
