@@ -15,7 +15,7 @@ const AVAILABLE_FEATURES = {
   quote: { name: "인용", description: "인용문 블록" },
   code: { name: "코드", description: "코드 블록" },
   table: { name: "표", description: "표 형태 데이터" },
-  bookmark: { name: "북마크", description: "URL 북마크" },
+  child_page: { name: "하위 페이지", description: "내용이 포함된 서브 페이지" },
 };
 
 type FeatureKey = keyof typeof AVAILABLE_FEATURES;
